@@ -8,13 +8,6 @@ const TAG_META = {
   Todo:       { color: "#10b981", bg: "#0e3d2e", label: "To-Do" },
 };
 
-const STUB_IDEAS = [
-  "Japan Consumer Recovery",
-  "EV Battery Supply Chain",
-  "Indian Fintech Wave",
-  "US Regional Bank Stress",
-  "Semiconductor Supercycle",
-];
 
 const STUB_SOURCES = [
   "Call with Karan",
@@ -198,11 +191,12 @@ function ApiKeyBanner({ apiKey, onSave }) {
   );
 }
 
-export default function ThoughtCapture() {
+export default function ThoughtCapture({ ideas = [], onSaveThought, onAddIdea }) {
   const [rawText, setRawText] = useState("");
   const [source, setSource] = useState("");
   const [customSource, setCustomSource] = useState("");
-  const [linkedIdea, setLinkedIdea] = useState("");
+  const [linkedIdeaId, setLinkedIdeaId] = useState("");
+  const [newIdeaName, setNewIdeaName] = useState("");
   const [loading, setLoading] = useState(false);
   const [extracted, setExtracted] = useState(null);
   const [checked, setChecked] = useState({});
@@ -332,12 +326,28 @@ Be concise in restating insights. Extract 2-6 insights maximum. Do not invent th
     const selectedInsights = extracted.filter(i => checked[i.id]);
     if (!selectedInsights.length) { setError("Select at least one insight to save."); return; }
     const finalSource = source === "__custom__" ? customSource : source;
-    setSaved(p => [{
-      raw: rawText, source: finalSource, linkedIdea,
+
+    // Resolve idea: create new one if needed
+    let resolvedIdeaId = linkedIdeaId;
+    if (linkedIdeaId === "__new__" && newIdeaName.trim() && onAddIdea) {
+      resolvedIdeaId = onAddIdea(newIdeaName.trim());
+    }
+    const linkedIdeaName = linkedIdeaId === "__new__"
+      ? newIdeaName
+      : ideas.find(i => i.id === resolvedIdeaId)?.name || "";
+
+    const entry = {
+      raw: rawText, source: finalSource,
+      ideaId: resolvedIdeaId, linkedIdea: linkedIdeaName,
       insights: selectedInsights,
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    }, ...p]);
-    setRawText(""); setSource(""); setCustomSource(""); setLinkedIdea("");
+    };
+
+    setSaved(p => [entry, ...p]);
+    if (onSaveThought) onSaveThought(entry);
+
+    setRawText(""); setSource(""); setCustomSource("");
+    setLinkedIdeaId(""); setNewIdeaName("");
     setExtracted(null); setChecked({});
     setSavedBanner(true);
     setTimeout(() => setSavedBanner(false), 2500);
@@ -355,42 +365,8 @@ Be concise in restating insights. Extract 2-6 insights maximum. Do not invent th
     setChecked(next);
   };
 
-  const tagCounts = saved.reduce((acc, entry) => {
-    entry.insights.forEach(i => { acc[i.tag] = (acc[i.tag] || 0) + 1; });
-    return acc;
-  }, {});
-
   return (
-    <div style={{
-      minHeight: "100vh", background: "#080f1a", color: "#e2e8f0",
-      fontFamily: "'Inter', -apple-system, sans-serif", padding: 0
-    }}>
-      {/* Header */}
-      <div style={{
-        background: "#0d1526", borderBottom: "1px solid #1e293b",
-        padding: "14px 24px", display: "flex", alignItems: "center", justifyContent: "space-between"
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{
-            width: 32, height: 32, borderRadius: 8,
-            background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
-            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16
-          }}>💡</div>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Thought Capture</div>
-            <div style={{ fontSize: 11, color: "#475569" }}>Global Portfolio Manager · POC</div>
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          {Object.entries(tagCounts).map(([tag, count]) => (
-            <div key={tag} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <TagPill tag={tag} small />
-              <span style={{ fontSize: 11, color: "#6b7280" }}>{count}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
+    <div style={{ background: "#080f1a", color: "#e2e8f0" }}>
       {/* API Key Banner — shown when key is missing */}
       {!apiKey && <ApiKeyBanner apiKey={apiKey} onSave={handleSaveKey} />}
 
@@ -442,15 +418,27 @@ Be concise in restating insights. Extract 2-6 insights maximum. Do not invent th
             )}
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>LINK TO IDEA (OPTIONAL)</label>
-              <select value={linkedIdea} onChange={e => setLinkedIdea(e.target.value)} style={{
+              <select value={linkedIdeaId} onChange={e => setLinkedIdeaId(e.target.value)} style={{
                 width: "100%", background: "#0d1526", border: "1px solid #1e293b",
-                borderRadius: 8, color: linkedIdea ? "#e2e8f0" : "#6b7280",
+                borderRadius: 8, color: linkedIdeaId ? "#e2e8f0" : "#6b7280",
                 padding: "9px 12px", fontSize: 13, outline: "none"
               }}>
                 <option value="">No idea linked</option>
-                {STUB_IDEAS.map(s => <option key={s} value={s}>{s}</option>)}
+                {ideas.map(i => <option key={i.id} value={i.id}>{i.name} [{i.stage}]</option>)}
                 <option value="__new__">+ Create new idea</option>
               </select>
+              {linkedIdeaId === "__new__" && (
+                <input
+                  value={newIdeaName}
+                  onChange={e => setNewIdeaName(e.target.value)}
+                  placeholder="Name the new idea…"
+                  style={{
+                    width: "100%", marginTop: 6, background: "#0d1526",
+                    border: "1px solid #f59e0b66", borderRadius: 8, color: "#e2e8f0",
+                    padding: "8px 12px", fontSize: 13, outline: "none", boxSizing: "border-box"
+                  }}
+                />
+              )}
             </div>
           </div>
 
@@ -570,17 +558,17 @@ Be concise in restating insights. Extract 2-6 insights maximum. Do not invent th
                 ))}
               </div>
               <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                {linkedIdea && linkedIdea !== "__new__" && (
+                {linkedIdeaId && linkedIdeaId !== "__new__" && (
                   <span style={{
                     fontSize: 12, color: "#8b5cf6", background: "#3b1f5e",
                     border: "1px solid #8b5cf644", borderRadius: 6, padding: "4px 10px"
-                  }}>→ {linkedIdea}</span>
+                  }}>→ {ideas.find(i => i.id === linkedIdeaId)?.name}</span>
                 )}
-                {linkedIdea === "__new__" && (
+                {linkedIdeaId === "__new__" && newIdeaName && (
                   <span style={{
                     fontSize: 12, color: "#10b981", background: "#0e3d2e",
                     border: "1px solid #10b98144", borderRadius: 6, padding: "4px 10px"
-                  }}>+ New idea will be created</span>
+                  }}>+ New idea: {newIdeaName}</span>
                 )}
                 <button onClick={saveSelected} style={{
                   flex: 1, background: "#10b981", border: "none", color: "#fff",
