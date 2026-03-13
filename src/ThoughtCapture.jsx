@@ -88,7 +88,7 @@ function InsightCard({ insight, checked, onToggle, onTagChange }) {
 }
 
 function RecentThoughtCard({ entry }) {
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = useState(false);
   return (
     <div
       onClick={() => setOpen(o => !o)}
