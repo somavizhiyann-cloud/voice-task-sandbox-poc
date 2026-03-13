@@ -88,24 +88,71 @@ function InsightCard({ insight, checked, onToggle, onTagChange }) {
 }
 
 function RecentThoughtCard({ entry }) {
+  const [open, setOpen] = React.useState(false);
   return (
-    <div style={{
-      background: "#0f172a", border: "1px solid #1f2937",
-      borderRadius: 10, padding: "12px 14px", marginBottom: 8
-    }}>
+    <div
+      onClick={() => setOpen(o => !o)}
+      style={{
+        background: "#0f172a", border: "1px solid #1f2937",
+        borderRadius: 10, padding: "12px 14px", marginBottom: 8, cursor: "pointer"
+      }}
+      onMouseEnter={e => e.currentTarget.style.borderColor = "#334155"}
+      onMouseLeave={e => e.currentTarget.style.borderColor = "#1f2937"}
+    >
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
         <span style={{ fontSize: 11, color: "#6b7280" }}>{entry.source || "No source"}</span>
-        <span style={{ fontSize: 11, color: "#4b5563" }}>{entry.time}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 11, color: "#4b5563" }}>{entry.time}</span>
+          <span style={{ fontSize: 11, color: "#4b5563" }}>{open ? "▲" : "▼"}</span>
+        </div>
       </div>
+
       <p style={{
         margin: "0 0 8px", color: "#94a3b8", fontSize: 12, lineHeight: 1.4,
-        overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2,
-        WebkitBoxOrient: "vertical"
+        ...(open ? {} : {
+          overflow: "hidden", display: "-webkit-box",
+          WebkitLineClamp: 2, WebkitBoxOrient: "vertical"
+        })
       }}>{entry.raw}</p>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        {entry.insights.map((ins, i) => <TagPill key={i} tag={ins.tag} small />)}
-      </div>
-      {entry.linkedIdea && entry.linkedIdea !== "__new__" && (
+
+      {!open && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {entry.insights.map((ins, i) => <TagPill key={i} tag={ins.tag} small />)}
+        </div>
+      )}
+
+      {open && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+          {entry.insights.map((ins, i) => (
+            <div key={i} style={{
+              background: "#0d1526", border: "1px solid #1e293b",
+              borderRadius: 8, padding: "8px 10px"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                <TagPill tag={ins.tag} small />
+                {ins.confidence && (
+                  <span style={{ fontSize: 10, color: "#6b7280" }}>
+                    {Math.round(ins.confidence * 100)}% confident
+                  </span>
+                )}
+              </div>
+              <p style={{ margin: 0, fontSize: 12, color: "#e2e8f0", lineHeight: 1.5 }}>
+                {ins.text}
+              </p>
+            </div>
+          ))}
+          {entry.linkedIdea && entry.linkedIdea !== "__new__" && (
+            <div style={{ marginTop: 2 }}>
+              <span style={{
+                fontSize: 10, color: "#8b5cf6", background: "#3b1f5e",
+                border: "1px solid #8b5cf644", borderRadius: 4, padding: "2px 7px"
+              }}>→ {entry.linkedIdea}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!open && entry.linkedIdea && entry.linkedIdea !== "__new__" && (
         <div style={{ marginTop: 6 }}>
           <span style={{
             fontSize: 10, color: "#8b5cf6", background: "#3b1f5e",
