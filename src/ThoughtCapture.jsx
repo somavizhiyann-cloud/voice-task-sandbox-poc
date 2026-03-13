@@ -131,7 +131,7 @@ function ApiKeyBanner({ apiKey, onSave }) {
         type="password"
         value={input}
         onChange={e => setInput(e.target.value)}
-        placeholder="Paste your Anthropic API key (sk-ant-…)"
+        placeholder="Paste your OpenAI API key (sk-…)"
         style={{
           flex: 1, background: "#0d1526", border: "1px solid #f59e0b44",
           borderRadius: 6, color: "#e2e8f0", padding: "7px 12px",
@@ -164,7 +164,7 @@ export default function ThoughtCapture() {
   const [savedBanner, setSavedBanner] = useState(false);
   const [listening, setListening] = useState(false);
   const [waveform, setWaveform] = useState(Array(20).fill(2));
-  const [apiKey, setApiKey] = useState(() => sessionStorage.getItem("anthropic_key") || "");
+  const [apiKey, setApiKey] = useState(() => sessionStorage.getItem("openai_key") || "");
   const recogRef = useRef(null);
   const waveInterval = useRef(null);
   const textareaRef = useRef(null);
@@ -172,7 +172,7 @@ export default function ThoughtCapture() {
 
   const handleSaveKey = (key) => {
     setApiKey(key);
-    sessionStorage.setItem("anthropic_key", key);
+    sessionStorage.setItem("openai_key", key);
   };
 
   // Animate waveform while listening
@@ -216,7 +216,7 @@ export default function ThoughtCapture() {
 
   const processThought = async () => {
     if (!rawText.trim()) { setError("Please enter a thought first."); return; }
-    if (!apiKey) { setError("Please enter your Anthropic API key above."); return; }
+    if (!apiKey) { setError("Please enter your OpenAI API key above."); return; }
     setError("");
     setLoading(true);
     setExtracted(null);
@@ -246,16 +246,14 @@ Respond ONLY with a JSON array. No preamble, no markdown fences. Format:
 Be concise in restating insights. Extract 2-6 insights maximum. Do not invent things not implied by the text.`;
 
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true",
+          "Authorization": `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
+          model: "gpt-4o-mini",
           max_tokens: 1000,
           messages: [{ role: "user", content: prompt }],
         }),
@@ -267,7 +265,7 @@ Be concise in restating insights. Extract 2-6 insights maximum. Do not invent th
       }
 
       const data = await res.json();
-      const text = data.content?.map(c => c.text || "").join("") || "";
+      const text = data.choices?.[0]?.message?.content || "";
       const clean = text.replace(/```json|```/g, "").trim();
       const insights = JSON.parse(clean);
       setExtracted(insights);
